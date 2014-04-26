@@ -45,6 +45,11 @@ exception Mauvaise_analyse ;;
 let rec creer_mot langage nombre_lettres = function
   | Forward ->
     begin
+      let avancer liste nouveau =
+	match liste with
+	| [] -> []
+	| h::t -> t@[nouveau]
+      in
       let n = 
 	match langage with
 	| Matrice.Ligne(t) -> Array.length t
@@ -71,7 +76,7 @@ let rec creer_mot langage nombre_lettres = function
 	    else
 	      begin
 		let i = roulette (get_sub_1 langage predecesseurs) possibilites in
-		let (suite, ok) = aux ((List.tl predecesseurs)@[i]) (possibilites_vierges ()) (longueur_restante - 1) in
+		let (suite, ok) = aux (avancer predecesseurs i) (possibilites_vierges ()) (longueur_restante - 1) in
 		if ok then ((premiere_lettre + i)::suite, true)
 		else 
 		  begin

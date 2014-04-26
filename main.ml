@@ -384,10 +384,11 @@ let main () =
     match !usage_souhaite with
     | Inconnu when pas_anonymes-> print_endline "! Je n'ai pas assez d'information pour comprendre ce que vous voulez (-help ?) !"
     | PasLister -> print_endline "! '-i' ne me suffit pas pour comprendre. Essayez '-help'."
-    | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> "" ->
+    | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> "" && !profondeur >= 1 ->
       begin
 	faire_analyser !fichier !fichier_a_analyser !forcer !profondeur
       end
+    | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> ""  -> print_endline "! Une profondeur inférieure à 1 n'a pas de sens !"
     | Analyser when pas_anonymes &&  !fichier = "" -> print_endline "! Si vous voulez analyser un langage, encore faut-il préciser lequel (via -i <nom>) !"
     | Analyser (*when !fichier_a_analyser = ""*) -> print_endline "! Et comment je fais pour deviner quel texte vous voulez analyser ? Faites plutôt -s <chemin> !"
     | Generer when pas_anonymes &&  !fichier <> "" ->
