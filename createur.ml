@@ -16,35 +16,35 @@ let rec creer_mot langage nombre_lettres = function
 	t.(-1 + Array.length langage) <- false ; (*On ne veut pas s'arrêter prématurément !*)
 	t
       in
-      let rec aux derniere_lettre possibilites = function
+      let rec aux antepenultieme penultieme possibilites = function
 	| 0 -> ([], true)
 	| longueur_restante  ->
 	  begin
 	    let taille = ref 0 in
 	    for i=0 to -1 + Array.length possibilites do
-	      if possibilites.(i) then taille := !taille + langage.(derniere_lettre).(i) ;
+	      if possibilites.(i) then taille := !taille + langage.(antepenultieme).(penultieme).(i) ;
 	    done ;
 	    if !taille = 0 then ([], false) 
 	    else
 	      begin
 		let roulette = ref (Random.int (!taille)) in
 		let i = ref 0 in
-		while !roulette >= langage.(derniere_lettre).(!i) do
+		while !roulette >= langage.(antepenultieme).(penultieme).(!i) do
 		  if possibilites.(!i) then
-		    roulette := !roulette - langage.(derniere_lettre).(!i) ;
+		    roulette := !roulette - langage.(antepenultieme).(penultieme).(!i) ;
 		  incr i
 		done ;
-		let (suite, ok) = aux (!i) (possibilites_vierges ()) (longueur_restante - 1) in
+		let (suite, ok) = aux penultieme (!i) (possibilites_vierges ()) (longueur_restante - 1) in
 		if ok then ((premiere_lettre + (!i))::suite, true)
 		else 
 		  begin
 		    possibilites.(!i) <- false ;
-		    aux (derniere_lettre) possibilites longueur_restante
+		    aux antepenultieme penultieme possibilites longueur_restante
 		  end
 	      end
 	  end
       in
-      match aux (-1 + Array.length langage) (possibilites_vierges ()) nombre_lettres with
+      match aux (-1 + Array.length langage) (-1 + Array.length langage) (possibilites_vierges ()) nombre_lettres with
       | (liste, true) -> String.concat "" (List.map (String.make 1) (List.map (char_of_int) liste))
       | (_, false) -> raise Mauvaise_analyse
     end
@@ -60,7 +60,8 @@ let rec creer_mot langage nombre_lettres = function
     let transposer matrice =
       let n = Array.length matrice in
       let p = if n=0 then 0 else Array.length matrice.(0) in
-      Array.init p (fun j -> Array.init n (fun i -> matrice.(i).(j)))
+      let q = if n=0 || p=0 then 0 else Array.length matrice.(0).(0) in
+      Array.init q (fun k -> Array.init p (fun j -> Array.init n (fun i -> matrice.(i).(j).(k))))
     in
     inverser_chaine (creer_mot (transposer langage) nombre_lettres Forward)
 ;;

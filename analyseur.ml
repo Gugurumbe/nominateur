@@ -47,13 +47,17 @@ let decomposer_en_mots str =
   done ;
   !mots
 ;;
+
+let make_cube n v =
+  Array.init n (fun _ -> Array.make_matrix n n v)
+;;
   
 let analyser chaine =
   let mots = decomposer_en_mots chaine in
   let i_of_c c = (int_of_char c) - premiere_lettre in
-  let table_occurences = Array.make_matrix (nombre_lettres + 1) (nombre_lettres + 1) 0 in
-  let incr i j =
-    table_occurences.(i).(j) <- table_occurences.(i).(j) + 1
+  let table_occurences = make_cube (nombre_lettres + 1) 0 in
+  let incr i j k =
+    table_occurences.(i).(j).(k) <- table_occurences.(i).(j).(k) + 1
   in
   let rec inscrire_mots = function
     |[] -> ()
@@ -61,14 +65,22 @@ let analyser chaine =
       begin
 	(*Le mot n'est pas vide*)
 	let n = String.length mot in
+	inscrire_mots liste ;
 	(*if n <> 0 then begin ... *)
-	incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
-	incr (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) ; 
-	(*On a inscrit où se commence et où se termine le mot*)
-	for i=0 to n-2 do
-	  incr (i_of_c mot.[i]) (i_of_c mot.[i+1])
+	for i=0 to n-3 do
+	  incr (i_of_c mot.[i]) (i_of_c mot.[i+1]) (i_of_c mot.[i+2])
 	done ;
-	inscrire_mots liste
+	incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
+	incr (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
+	if n <= 1 then
+	  begin
+	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) 
+	  end
+	else
+	  begin
+	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
+	    incr (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) ;
+	  end 
       end
   in
   inscrire_mots mots ;

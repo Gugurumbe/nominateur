@@ -41,7 +41,7 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) :
     if valide || forcer then
       begin
 	let fichier = open_out_bin langage in
-	Array.iter (Array.iter (output_binary_int fichier)) matrice ;
+	Array.iter (Array.iter (Array.iter (output_binary_int fichier))) matrice ;
 	close_out fichier ;
 	let noms_fichiers = 
 	  try
@@ -73,7 +73,7 @@ let faire_generer langage nombre majuscule backward taille variation =
   in
   try
     let fichier = open_in langage in
-    let matrice = Array.init 27 (fun _ -> Array.init 27 (fun _ -> input_binary_int fichier)) in
+    let matrice = Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> input_binary_int fichier))) in
     close_in fichier ;
     for i=0 to nombre - 1 do
       afficher (Createur.creer_mot matrice (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) (if backward then Createur.Backward else Createur.Forward)) ;
