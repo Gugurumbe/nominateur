@@ -67,7 +67,7 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) (
       ("! Erreur : le fichier \""^(fichier_texte)^"\" n'est pas accessible !")
 ;;
 
-let faire_generer langage nombre majuscule backward taille variation =
+let faire_generer langage nombre majuscule forward backward taille variation =
   let afficher mot =
     if majuscule && String.length mot <> 0 then
       mot.[0] <- char_of_int ((int_of_char mot.[0]) - (int_of_char 'a') + (int_of_char 'A')) ;
@@ -77,7 +77,7 @@ let faire_generer langage nombre majuscule backward taille variation =
     let fichier = open_in langage in
     let profondeur = input_binary_int fichier in
     let matrice = Matrice.init_cube 27 profondeur (fun _ -> input_binary_int fichier) in
-    let matrice = if backward then Matrice.transposer matrice else matrice in
+    let matrice_transp = Matrice.transposer matrice in
     let inverser s =
       let n = String.length s in
       let str = String.make n ' ' in
@@ -86,13 +86,20 @@ let faire_generer langage nombre majuscule backward taille variation =
       done ;
       str
     in
-    let bon_sens mot = 
-      if backward then inverser mot else mot
-    in
     close_in fichier ;
+    let taille_reelle = ref 0 in
+    let taille_backward = ref 0 in
+    let taille_forward = ref 0 in
+    let partie_forward = ref "" in
+    let partie_backward = ref "" in
     for i=0 to nombre - 1 do
-      afficher (bon_sens (Createur.creer_mot matrice (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) (Createur.Forward))) ;
-		done ;
+      taille_reelle := (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) ;
+      taille_backward := if backward && forward then !taille_reelle / 2 else if backward then !taille_reelle else 0 ;
+      taille_forward :=  if backward && forward then !taille_reelle - !taille_backward else if forward then !taille_reelle else 0 ;
+      partie_forward := Createur.creer_mot matrice (!taille_forward) (Createur.Forward) ;
+      partie_backward := inverser (Createur.creer_mot matrice_transp (!taille_backward) (Createur.Forward)) ;
+      afficher ((!partie_forward)^(!partie_backward)) ;
+    done ;
   with
   | Sys_error(s) when s = langage^": No such file or directory" -> 
     print_endline ("! Erreur : le fichier \""^(langage)^"\" n'est pas accessible !")
@@ -157,6 +164,7 @@ let main () =
   let fichier = ref "" in
   let fichier_a_analyser = ref "" in
   let majuscule = ref false in
+  let forward = ref false in
   let backward = ref false in
   let taille = ref 10 in
   let variation = ref 0.3 in
@@ -172,7 +180,7 @@ let main () =
     | Analyser -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-a' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-analyser' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -184,7 +192,7 @@ let main () =
     | Lister -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-l' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-lister' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -196,7 +204,7 @@ let main () =
     | Menage -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-d' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-supprimer' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -219,7 +227,7 @@ let main () =
     | Inconnu -> usage_souhaite := PasLister
     | PasLister when not (!erreur) -> 
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-i' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-langage' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -231,7 +239,7 @@ let main () =
     | Analyser -> ()
     | _ when not (!erreur) -> 
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-s' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-source' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -243,7 +251,19 @@ let main () =
     | Generer -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-c' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-majuscule' ici !" ;
+	erreur := true
+      end
+    | _ -> ()
+  in
+  let set_forward () =
+    forward := true ;
+    match !usage_souhaite with
+    | Inconnu | PasLister -> usage_souhaite := Generer 
+    | Generer -> ()
+    | _ when not (!erreur) ->
+      begin
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-forward' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -255,7 +275,7 @@ let main () =
     | Generer -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-b' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-backward' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -267,7 +287,7 @@ let main () =
     | Generer -> ()
     | _ when not (!erreur) -> 
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-t' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-taille' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -279,7 +299,7 @@ let main () =
     | Generer -> ()
     | _ when not (!erreur) -> 
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-v' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-variation' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -291,7 +311,7 @@ let main () =
     | Analyser -> ()
     | _ when not (!erreur) ->
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-f' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-forcer' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -303,7 +323,7 @@ let main () =
     | Analyser -> ()
     | _ when not (!erreur) -> 
       begin
-	print_endline "! Erreur : vous ne pouvez pas utiliser '-p' ici !" ;
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-profondeur' ici !" ;
 	erreur := true
       end
     | _ -> ()
@@ -312,40 +332,43 @@ let main () =
     liste_anonymes := mot::(!liste_anonymes) 
   in
   let speclist = 
-    [("-a", 
+    [("-analyser", 
       Arg.Unit (set_analyser), 
       " si vous voulez analyser un texte dans une nouvelle langue.") ;
-     ("-l", 
+     ("-lister", 
       Arg.Unit (set_lister),
       " si vous voulez lister les langages disponibles.") ;
-     ("-d", 
+     ("-supprimer", 
       Arg.Unit (set_supprimer),
       " si vous voulez supprimer un langage.") ;
      ("-n",
       Arg.Int (set_nmots),
       " si vous voulez générer plusieurs mots.") ;
-     ("-i",
+     ("-langage",
       Arg.String (set_langage),
       " pour définir le nom du langage.") ;
-     ("-s",
+     ("-source",
       Arg.String (set_source),
       " pour définir le nom du fichier contenant le texte à analyser.") ;
-     ("-c",
+     ("-majuscule",
       Arg.Unit (set_majuscule),
       " si vous voulez une majuscule devant tous les noms à générer.") ;
-     ("-b",
+     ("-forward",
+      Arg.Unit (set_forward),
+      " si vous voulez générer un mot en commençant par le début. Activé par défaut. Si vous le combinez avec -backward, deux demi-mots seront accolés.") ;
+     ("-backward",
       Arg.Unit (set_backward),
       " si vous voulez générer un mot en commençant par la désinence.") ;
-     ("-t", 
+     ("-taille", 
       Arg.Int (set_taille),
       " si vous voulez que les mots aient une taille différente de 10.") ;
-     ("-v",
+     ("-variation",
       Arg.Float (set_variation),
       " pour changer la variation de taille des mots. Par défaut : 30%.") ;
-     ("-f",
+     ("-forcer",
       Arg.Unit (set_forcer),
       " si vous voulez ajouter ce langage même si l'analyse est insuffisante.") ;
-     ("-p", 
+     ("-profondeur", 
       Arg.Int (set_profondeur),
       " pour spécifier la profondeur de création. Plus la profondeur est grande, plus les mots créés ressembleront au modèle. Attention : l'analyse doit aussi se faire sur un texte plus long !")
     ] in
@@ -356,10 +379,10 @@ let main () =
     | [] -> true
     | _  -> false
   in
-  if !erreur then print_endline "Impossible de comprendre ce que vous voulez."
+  if !erreur then print_endline "Impossible de comprendre ce que vous voulez. -help ?"
   else
     match !usage_souhaite with
-    | Inconnu when pas_anonymes-> print_endline "! Je n'ai pas assez d'information pour comprendre ce que vous voulez !"
+    | Inconnu when pas_anonymes-> print_endline "! Je n'ai pas assez d'information pour comprendre ce que vous voulez (-help ?) !"
     | PasLister -> print_endline "! '-i' ne me suffit pas pour comprendre. Essayez '-help'."
     | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> "" ->
       begin
@@ -369,7 +392,7 @@ let main () =
     | Analyser (*when !fichier_a_analyser = ""*) -> print_endline "! Et comment je fais pour deviner quel texte vous voulez analyser ? Faites plutôt -s <chemin> !"
     | Generer when pas_anonymes &&  !fichier <> "" ->
       begin
-	faire_generer !fichier !nombre_mots !majuscule !backward !taille !variation
+	faire_generer !fichier !nombre_mots !majuscule (if !backward then !forward else true) !backward !taille !variation
       end
     | Generer when pas_anonymes -> print_endline "! Dans quelle langue voulez-vous générer des mots ? -i <langage> !"
     | Lister when pas_anonymes ->
