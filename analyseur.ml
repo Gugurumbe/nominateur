@@ -48,52 +48,33 @@ let decomposer_en_mots str =
   !mots
 ;;
 
-let make_cube n v =
-  Array.init n (fun _ -> Array.init n (fun _ -> Array.make_matrix n n v))
+let init_list taille fonct =
+  let rec aux i =
+    if i = taille then []
+    else (fonct i)::(aux (i+1))
+  in
+  aux 0
 ;;
   
-let analyser chaine =
+let analyser chaine profondeur =
   let mots = decomposer_en_mots chaine in
-  let i_of_c c = (int_of_char c) - premiere_lettre in
-  let table_occurences = make_cube (nombre_lettres + 1) 0 in
-  let incr i j k l =
-    table_occurences.(i).(j).(k).(l) <- table_occurences.(i).(j).(k).(l) + 1
+  let table_occurences = Matrice.make_cube (nombre_lettres + 1) profondeur 0 in
+  let i_of_c c = if c = '|' then nombre_lettres else (int_of_char c) - premiere_lettre in
+  let incr coord =
+    Matrice.set table_occurences coord (1 + Matrice.get table_occurences coord)
   in
   let rec inscrire_mots = function
     |[] -> ()
     |mot::liste -> 
       begin
-	(*Le mot n'est pas vide*)
-	let n = String.length mot in
+	(*Le mot n'est pas vide*) 
 	inscrire_mots liste ;
 	(*if n <> 0 then begin ... *)
-	for i=0 to n-4 do
-	  incr (i_of_c mot.[i]) (i_of_c mot.[i+1]) (i_of_c mot.[i+2]) (i_of_c mot.[i+3])
-	done ;
-	if n = 1 then
-	  begin
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) ;
-	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
-	    incr (i_of_c mot.[0]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
-	  end
-	else if n = 2 then
-	  begin
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
-	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) (-1 + Array.length table_occurences) ;
-	    incr (i_of_c mot.[0]) (i_of_c mot.[1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
-	    incr (i_of_c mot.[1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
-	  end
-	else
-	  begin
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
-	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
-	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) (i_of_c mot.[2]) ;
-	    incr (i_of_c mot.[n-3]) (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) ;
-	    incr (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
-	    incr (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
-	  end 
+	let mot = (String.make profondeur '|')^mot^(String.make profondeur '|') in
+	let n = String.length mot in
+	for i=0 to n-profondeur do
+	  incr (init_list profondeur (fun j -> i_of_c mot.[i+j]))
+	done  
       end
   in
   inscrire_mots mots ;

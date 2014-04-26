@@ -1,5 +1,5 @@
-SRC = analyseur.ml createur.ml validation.ml main.ml
-INTERFACES = analyseur.mli createur.mli validation.mli
+SRC = matrice.ml analyseur.ml createur.ml validation.ml main.ml
+INTERFACES = matrice.mli analyseur.mli createur.mli validation.mli
 
 EXEC = nominateur
 

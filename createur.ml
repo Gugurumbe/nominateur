@@ -21,6 +21,23 @@ let roulette tableau masque =
   !i
 ;; 
 
+let rec make_list taille element =
+  match taille with
+  | 0 -> []
+  | _ -> element::(make_list (taille-1) element)
+;;
+
+let get_sub_1 matrice coords =
+  match Matrice.sub matrice coords with
+  | Matrice.Ligne(ligne) ->
+    begin
+      Array.map (function
+      | Matrice.Valeur(x) -> !x
+      | _ -> failwith "Vivien est un abruti")
+	ligne
+    end
+  | _ -> failwith "Qui est un imbécile ?" 
+;;
 
 (*Attention : on ne peut pas créer de mot vide !*)
 (* Peut échouer. *)
@@ -28,12 +45,17 @@ exception Mauvaise_analyse ;;
 let rec creer_mot langage nombre_lettres = function
   | Forward ->
     begin
+      let n = 
+	match langage with
+	| Matrice.Ligne(t) -> Array.length t
+	| _ -> 0
+      in
       let possibilites_vierges () = 
-	let t = Array.make (Array.length langage) true in
-	t.(-1 + Array.length langage) <- false ; (*On ne veut pas s'arrêter prématurément !*)
+	let t = Array.make n true in
+	t.(n-1) <- false ; (*On ne veut pas s'arrêter prématurément !*)
 	t
       in
-      let rec aux aap ap p possibilites = function
+      let rec aux predecesseurs possibilites = function
 	| 0 -> 
 	  begin
 	    ([], true)
@@ -42,28 +64,28 @@ let rec creer_mot langage nombre_lettres = function
 	  begin
 	    let taille = ref 0 in
 	    for i=0 to -1 + Array.length possibilites do
-	      if langage.(aap).(ap).(p).(i) = 0 then possibilites.(i) <- false ;
-	      if possibilites.(i) then taille := !taille + langage.(aap).(ap).(p).(i) ;
+	      if Matrice.get langage (predecesseurs@[i]) = 0 then possibilites.(i) <- false ;
+	      if possibilites.(i) then taille := !taille + Matrice.get langage (predecesseurs@[i]) ;
 	    done ;
 	    if !taille = 0 then ([], false) 
 	    else
 	      begin
-		let i = roulette (langage.(aap).(ap).(p)) possibilites in
-		let (suite, ok) = aux ap p i (possibilites_vierges ()) (longueur_restante - 1) in
+		let i = roulette (get_sub_1 langage predecesseurs) possibilites in
+		let (suite, ok) = aux ((List.tl predecesseurs)@[i]) (possibilites_vierges ()) (longueur_restante - 1) in
 		if ok then ((premiere_lettre + i)::suite, true)
 		else 
 		  begin
 		    possibilites.(i) <- false ;
-		    aux aap ap p possibilites longueur_restante
+		    aux predecesseurs possibilites longueur_restante
 		  end
 	      end
 	  end
       in
-      match aux (-1 + Array.length langage) (-1 + Array.length langage) (-1 + Array.length langage) (possibilites_vierges ()) nombre_lettres with
+      match aux (make_list (-1 + Matrice.profondeur langage) (n-1)) (possibilites_vierges ()) nombre_lettres with
       | (liste, true) -> String.concat "" (List.map (String.make 1) (List.map (char_of_int) liste))
       | (_, false) -> raise Mauvaise_analyse
     end
-  | Backward ->
+  | Backward -> (*Attention : on transpose une GROSSE matrice à chaque nouveau mot*)
     let inverser_chaine str =
       let s = String.make (String.length str) '0' in
       let n = String.length str in
@@ -72,12 +94,5 @@ let rec creer_mot langage nombre_lettres = function
       done ;
       s
     in
-    let transposer matrice =
-      let n = Array.length matrice in
-      let p = if n=0 then 0 else Array.length matrice.(0) in
-      let q = if n=0 || p=0 then 0 else Array.length matrice.(0).(0) in
-      let r = if n=0 || p=0 || q=0 then 0 else Array.length matrice.(0).(0).(0) in
-      Array.init r (fun l -> Array.init q (fun k -> Array.init p (fun j -> Array.init n (fun i -> matrice.(i).(j).(k).(l)))))
-    in
-    inverser_chaine (creer_mot (transposer langage) nombre_lettres Forward)
+    inverser_chaine (creer_mot (Matrice.transposer langage) nombre_lettres Forward)
 ;;

@@ -31,17 +31,19 @@ let output_endline flux str =
   flush flux
 ;;
 
-let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) : unit =
+let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) (profondeur : int) : unit =
   try
     let fichier = open_in fichier_texte in
     let contenu = input_all_text fichier in
-    let matrice = Analyseur.analyser contenu in
+    let matrice = Analyseur.analyser contenu profondeur in
     close_in fichier ;
     let valide = Validation.valider matrice in
     if valide || forcer then
       begin
 	let fichier = open_out_bin langage in
-	Array.iter (Array.iter (Array.iter (Array.iter (output_binary_int fichier)))) matrice ;
+	output_binary_int fichier (Matrice.profondeur matrice) ;
+	Matrice.iter (output_binary_int fichier) matrice ;
+	flush fichier ;
 	close_out fichier ;
 	let noms_fichiers = 
 	  try
@@ -65,18 +67,6 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) :
       ("! Erreur : le fichier \""^(fichier_texte)^"\" n'est pas accessible !")
 ;;
 
-let transposer matrice =
-  let n = Array.length matrice in
-  let p = if n=0 then 0 else Array.length matrice.(0) in
-  let q = if n=0 || p=0 then 0 else Array.length matrice.(0).(0) in
-  let r = if n=0 || p=0 || q=0 then 0 else Array.length matrice.(0).(0).(0) in
-  Array.init r
-    (fun l -> Array.init q
-      (fun k -> Array.init p
-	(fun j -> Array.init n
-	  (fun i -> matrice.(i).(j).(k).(l)))))
-;;
-
 let faire_generer langage nombre majuscule backward taille variation =
   let afficher mot =
     if majuscule && String.length mot <> 0 then
@@ -85,8 +75,9 @@ let faire_generer langage nombre majuscule backward taille variation =
   in
   try
     let fichier = open_in langage in
-    let matrice = Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> input_binary_int fichier)))) in
-    let matrice = if backward then transposer matrice else matrice in
+    let profondeur = input_binary_int fichier in
+    let matrice = Matrice.init_cube 27 profondeur (fun _ -> input_binary_int fichier) in
+    let matrice = if backward then Matrice.transposer matrice else matrice in
     let inverser s =
       let n = String.length s in
       let str = String.make n ' ' in
@@ -108,6 +99,17 @@ let faire_generer langage nombre majuscule backward taille variation =
 ;;
 
 let faire_lister () =
+  let informations nom =
+    try
+      print_string nom ;
+      let fichier = open_in nom in
+      let prof = input_binary_int fichier in
+      print_string " (profondeur : " ;
+      print_int prof ;
+      print_endline ")" ;
+    with
+    | Sys_error(s) when s = nom^": No such file or directory" -> print_endline " (non accessible)"
+  in
   let noms_fichiers = 
     try
       let fichier = open_in "liste" in
@@ -117,7 +119,7 @@ let faire_lister () =
     with
     |Sys_error("liste: No such file or directory") -> []
   in
-  List.iter (print_endline) noms_fichiers
+  List.iter (informations) noms_fichiers
 ;;
 
 let faire_menage liste =
@@ -159,6 +161,7 @@ let main () =
   let taille = ref 10 in
   let variation = ref 0.3 in
   let forcer = ref false in
+  let profondeur = ref 3 in
   let usage_souhaite = ref Inconnu in
   let erreur = ref false in
   let liste_anonymes = ref [] in
@@ -293,6 +296,18 @@ let main () =
       end
     | _ -> ()
   in
+  let set_profondeur n = 
+    profondeur := n ;
+    match !usage_souhaite with
+    | Inconnu | PasLister -> usage_souhaite := Analyser
+    | Analyser -> ()
+    | _ when not (!erreur) -> 
+      begin
+	print_endline "! Erreur : vous ne pouvez pas utiliser '-p' ici !" ;
+	erreur := true
+      end
+    | _ -> ()
+  in
   let ajouter_anonyme mot =
     liste_anonymes := mot::(!liste_anonymes) 
   in
@@ -329,7 +344,10 @@ let main () =
       " pour changer la variation de taille des mots. Par défaut : 30%.") ;
      ("-f",
       Arg.Unit (set_forcer),
-      " si vous voulez ajouter ce langage même si l'analyse est insuffisante.")
+      " si vous voulez ajouter ce langage même si l'analyse est insuffisante.") ;
+     ("-p", 
+      Arg.Int (set_profondeur),
+      " pour spécifier la profondeur de création. Plus la profondeur est grande, plus les mots créés ressembleront au modèle. Attention : l'analyse doit aussi se faire sur un texte plus long !")
     ] in
   let message_utilisation = "En manque d'inspiration ? Créez des mots aléatoires. Il suffit d'analyser un texte dans votre langue favorite (alphabet latin), et si cette analyse est validée, vous pourrez générer des mots qui y ressemblent !" in
   Arg.parse speclist (ajouter_anonyme) message_utilisation ;
@@ -345,7 +363,7 @@ let main () =
     | PasLister -> print_endline "! '-i' ne me suffit pas pour comprendre. Essayez '-help'."
     | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> "" ->
       begin
-	faire_analyser !fichier !fichier_a_analyser !forcer
+	faire_analyser !fichier !fichier_a_analyser !forcer !profondeur
       end
     | Analyser when pas_anonymes &&  !fichier = "" -> print_endline "! Si vous voulez analyser un langage, encore faut-il préciser lequel (via -i <nom>) !"
     | Analyser (*when !fichier_a_analyser = ""*) -> print_endline "! Et comment je fais pour deviner quel texte vous voulez analyser ? Faites plutôt -s <chemin> !"
