@@ -41,7 +41,7 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) :
     if valide || forcer then
       begin
 	let fichier = open_out_bin langage in
-	Array.iter (Array.iter (Array.iter (output_binary_int fichier))) matrice ;
+	Array.iter (Array.iter (Array.iter (Array.iter (output_binary_int fichier)))) matrice ;
 	close_out fichier ;
 	let noms_fichiers = 
 	  try
@@ -65,6 +65,18 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) :
       ("! Erreur : le fichier \""^(fichier_texte)^"\" n'est pas accessible !")
 ;;
 
+let transposer matrice =
+  let n = Array.length matrice in
+  let p = if n=0 then 0 else Array.length matrice.(0) in
+  let q = if n=0 || p=0 then 0 else Array.length matrice.(0).(0) in
+  let r = if n=0 || p=0 || q=0 then 0 else Array.length matrice.(0).(0).(0) in
+  Array.init r
+    (fun l -> Array.init q
+      (fun k -> Array.init p
+	(fun j -> Array.init n
+	  (fun i -> matrice.(i).(j).(k).(l)))))
+;;
+
 let faire_generer langage nombre majuscule backward taille variation =
   let afficher mot =
     if majuscule && String.length mot <> 0 then
@@ -73,10 +85,22 @@ let faire_generer langage nombre majuscule backward taille variation =
   in
   try
     let fichier = open_in langage in
-    let matrice = Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> input_binary_int fichier))) in
+    let matrice = Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> Array.init 27 (fun _ -> input_binary_int fichier)))) in
+    let matrice = if backward then transposer matrice else matrice in
+    let inverser s =
+      let n = String.length s in
+      let str = String.make n ' ' in
+      for i=0 to n-1 do
+	str.[n-1-i] <- s.[i]
+      done ;
+      str
+    in
+    let bon_sens mot = 
+      if backward then inverser mot else mot
+    in
     close_in fichier ;
     for i=0 to nombre - 1 do
-      afficher (Createur.creer_mot matrice (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) (if backward then Createur.Backward else Createur.Forward)) ;
+      afficher (bon_sens (Createur.creer_mot matrice (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) (Createur.Forward))) ;
 		done ;
   with
   | Sys_error(s) when s = langage^": No such file or directory" -> 

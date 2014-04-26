@@ -36,7 +36,7 @@ let decomposer_en_mots str =
 	| [] -> ()
 	| _ ->
 	  begin
-	    mots := (string_of_char_list !mot_courant)::(!mots) ;
+	    mots := (string_of_char_list (List.rev !mot_courant))::(!mots) ;
 	    mot_courant := []
 	  end
       end
@@ -49,15 +49,15 @@ let decomposer_en_mots str =
 ;;
 
 let make_cube n v =
-  Array.init n (fun _ -> Array.make_matrix n n v)
+  Array.init n (fun _ -> Array.init n (fun _ -> Array.make_matrix n n v))
 ;;
   
 let analyser chaine =
   let mots = decomposer_en_mots chaine in
   let i_of_c c = (int_of_char c) - premiere_lettre in
   let table_occurences = make_cube (nombre_lettres + 1) 0 in
-  let incr i j k =
-    table_occurences.(i).(j).(k) <- table_occurences.(i).(j).(k) + 1
+  let incr i j k l =
+    table_occurences.(i).(j).(k).(l) <- table_occurences.(i).(j).(k).(l) + 1
   in
   let rec inscrire_mots = function
     |[] -> ()
@@ -67,19 +67,32 @@ let analyser chaine =
 	let n = String.length mot in
 	inscrire_mots liste ;
 	(*if n <> 0 then begin ... *)
-	for i=0 to n-3 do
-	  incr (i_of_c mot.[i]) (i_of_c mot.[i+1]) (i_of_c mot.[i+2])
+	for i=0 to n-4 do
+	  incr (i_of_c mot.[i]) (i_of_c mot.[i+1]) (i_of_c mot.[i+2]) (i_of_c mot.[i+3])
 	done ;
-	incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
-	incr (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
-	if n <= 1 then
+	if n = 1 then
 	  begin
-	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) 
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) ;
+	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
+	    incr (i_of_c mot.[0]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
+	  end
+	else if n = 2 then
+	  begin
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
+	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) (-1 + Array.length table_occurences) ;
+	    incr (i_of_c mot.[0]) (i_of_c mot.[1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
+	    incr (i_of_c mot.[1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
 	  end
 	else
 	  begin
-	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
-	    incr (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) ;
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) ;
+	    incr (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) ;
+	    incr (-1 + Array.length table_occurences) (i_of_c mot.[0]) (i_of_c mot.[1]) (i_of_c mot.[2]) ;
+	    incr (i_of_c mot.[n-3]) (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) ;
+	    incr (i_of_c mot.[n-2]) (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ;
+	    incr (i_of_c mot.[n-1]) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) (-1 + Array.length table_occurences) ; 
 	  end 
       end
   in
