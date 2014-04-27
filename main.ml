@@ -40,23 +40,7 @@ let faire_analyser (langage : string) (fichier_texte : string) (forcer : bool) (
     let valide = Validation.valider matrice in
     if valide || forcer then
       begin
-	let fichier = open_out_bin langage in
-	output_binary_int fichier (Matrice.profondeur matrice) ;
-	Matrice.iter (output_binary_int fichier) matrice ;
-	flush fichier ;
-	close_out fichier ;
-	let noms_fichiers = 
-	  try
-	    let fichier = open_in "liste" in
-	    let l = List.map (String.trim) (charger_lignes fichier) in
-	    close_in fichier ;
-	    l
-	  with
-	  |Sys_error("liste: No such file or directory") -> []
-	in
-	let fichier = open_out "liste" in
-	List.iter (output_endline fichier) (langage::noms_fichiers) ;
-	close_out fichier ;
+	Gestionnaire_fichiers.sauver langage matrice ;
 	if not(valide) then print_endline "Attention : l'analyse du texte n'est pas suffisante pour garantir des mots de toutes tailles." ;
       end 
     else
@@ -73,43 +57,36 @@ let faire_generer langage nombre majuscule forward backward taille variation =
       mot.[0] <- char_of_int ((int_of_char mot.[0]) - (int_of_char 'a') + (int_of_char 'A')) ;
     print_endline mot
   in
-  try
-    let fichier = open_in langage in
-    let profondeur = input_binary_int fichier in
-    let matrice = Matrice.init_cube 27 profondeur (fun _ -> input_binary_int fichier) in
-    let matrice_transp = Matrice.transposer matrice in
-    let inverser s =
-      let n = String.length s in
-      let str = String.make n ' ' in
-      for i=0 to n-1 do
-	str.[n-1-i] <- s.[i]
-      done ;
-      str
-    in
-    close_in fichier ;
-    let taille_reelle = ref 0 in
-    let taille_backward = ref 0 in
-    let taille_forward = ref 0 in
-    let partie_forward = ref "" in
-    let partie_backward = ref "" in
-    for i=0 to nombre - 1 do
-      taille_reelle := (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) ;
-      taille_backward := if backward && forward then !taille_reelle / 2 else if backward then !taille_reelle else 0 ;
-      taille_forward :=  if backward && forward then !taille_reelle - !taille_backward else if forward then !taille_reelle else 0 ;
-      partie_forward := Createur.creer_mot matrice (!taille_forward) (Createur.Forward) ;
-      partie_backward := inverser (Createur.creer_mot matrice_transp (!taille_backward) (Createur.Forward)) ;
-      afficher ((!partie_forward)^(!partie_backward)) ;
+  let matrice = Gestionnaire_fichiers.charger langage in
+  let matrice_transp = Matrice.transposer matrice in
+  let inverser s =
+    let n = String.length s in
+    let str = String.make n ' ' in
+    for i=0 to n-1 do
+      str.[n-1-i] <- s.[i]
     done ;
-  with
-  | Sys_error(s) when s = langage^": No such file or directory" -> 
-    print_endline ("! Erreur : le fichier \""^(langage)^"\" n'est pas accessible !")
+    str
+  in
+  let taille_reelle = ref 0 in
+  let taille_backward = ref 0 in
+  let taille_forward = ref 0 in
+  let partie_forward = ref "" in
+  let partie_backward = ref "" in
+  for i=0 to nombre - 1 do
+    taille_reelle := (int_of_float ((float_of_int taille) *. (1. +. (variation *. (-.1. +. 2.*.(Random.float 1.)))))) ;
+    taille_backward := if backward && forward then !taille_reelle / 2 else if backward then !taille_reelle else 0 ;
+    taille_forward :=  if backward && forward then !taille_reelle - !taille_backward else if forward then !taille_reelle else 0 ;
+    partie_forward := Createur.creer_mot matrice (!taille_forward) (Createur.Forward) ;
+    partie_backward := inverser (Createur.creer_mot matrice_transp (!taille_backward) (Createur.Forward)) ;
+    afficher ((!partie_forward)^(!partie_backward)) ;
+  done 
 ;;
 
 let faire_lister () =
   let informations nom =
     try
       print_string nom ;
-      let fichier = open_in nom in
+      let fichier = Gestionnaire_fichiers.ouvrir_langage_in nom in
       let prof = input_binary_int fichier in
       print_string " (profondeur : " ;
       print_int prof ;
@@ -117,43 +94,12 @@ let faire_lister () =
     with
     | Sys_error(s) when s = nom^": No such file or directory" -> print_endline " (non accessible)"
   in
-  let noms_fichiers = 
-    try
-      let fichier = open_in "liste" in
-      let l = List.map (String.trim) (charger_lignes fichier) in
-      close_in fichier ;
-      l
-    with
-    |Sys_error("liste: No such file or directory") -> []
-  in
-  List.iter (informations) noms_fichiers
+  let noms_fichiers = Gestionnaire_fichiers.liste_langages () in
+  Array.iter (informations) noms_fichiers
 ;;
 
 let faire_menage liste =
-  let noms_fichiers = 
-    try
-      let fichier = open_in "liste" in
-      let l = List.map (String.trim) (charger_lignes fichier) in
-      close_in fichier ;
-      l
-    with
-    |Sys_error("liste: No such file or directory") -> []
-  in
-  let rec contient e = function
-    | [] -> false
-    | x::_ when e = x -> true
-    | _::t -> contient e t
-  in
-  let rec eliminer = function
-    |[] -> []
-    |fichier::reste when contient fichier liste ->
-      eliminer reste
-    |fichier::reste -> fichier::(eliminer reste)
-  in
-  let resultat = eliminer noms_fichiers in
-  let fichier = open_out_bin "liste" in
-  List.iter (output_endline fichier) resultat ;
-  close_out fichier
+  List.iter (Gestionnaire_fichiers.supprimer) liste
 ;;
 
 let main () =
@@ -372,7 +318,7 @@ let main () =
       Arg.Int (set_profondeur),
       " pour spécifier la profondeur de création. Plus la profondeur est grande, plus les mots créés ressembleront au modèle. Attention : l'analyse doit aussi se faire sur un texte plus long !")
     ] in
-  let message_utilisation = "En manque d'inspiration ? Créez des mots aléatoires. Il suffit d'analyser un texte dans votre langue favorite (alphabet latin), et si cette analyse est validée, vous pourrez générer des mots qui y ressemblent !" in
+  let message_utilisation = "En manque d'inspiration ? Créez des mots aléatoires. Il suffit d'analyser un texte dans votre langue favorite (alphabet latin), et si cette analyse est validée, vous pourrez générer des mots qui y ressemblent !\nNote : le programme travaille à partir du dossier "^(Gestionnaire_fichiers.working_directory ())^"." in
   Arg.parse speclist (ajouter_anonyme) message_utilisation ;
   liste_anonymes := List.rev (!liste_anonymes) ;
   let pas_anonymes = match !liste_anonymes with
@@ -383,19 +329,19 @@ let main () =
   else
     match !usage_souhaite with
     | Inconnu when pas_anonymes-> print_endline "! Je n'ai pas assez d'information pour comprendre ce que vous voulez (-help ?) !"
-    | PasLister -> print_endline "! '-i' ne me suffit pas pour comprendre. Essayez '-help'."
+    | PasLister -> print_endline "! '-langage' ne me suffit pas pour comprendre. Essayez '-help'."
     | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> "" && !profondeur >= 1 ->
       begin
 	faire_analyser !fichier !fichier_a_analyser !forcer !profondeur
       end
     | Analyser when pas_anonymes && !fichier <> "" && !fichier_a_analyser <> ""  -> print_endline "! Une profondeur inférieure à 1 n'a pas de sens !"
-    | Analyser when pas_anonymes &&  !fichier = "" -> print_endline "! Si vous voulez analyser un langage, encore faut-il préciser lequel (via -i <nom>) !"
-    | Analyser (*when !fichier_a_analyser = ""*) -> print_endline "! Et comment je fais pour deviner quel texte vous voulez analyser ? Faites plutôt -s <chemin> !"
+    | Analyser when pas_anonymes &&  !fichier = "" -> print_endline "! Si vous voulez analyser un langage, encore faut-il préciser lequel (via -langage <nom>) !"
+    | Analyser (*when !fichier_a_analyser = ""*) -> print_endline "! Et comment je fais pour deviner quel texte vous voulez analyser ? Faites plutôt -source <chemin> !"
     | Generer when pas_anonymes &&  !fichier <> "" ->
       begin
 	faire_generer !fichier !nombre_mots !majuscule (if !backward then !forward else true) !backward !taille !variation
       end
-    | Generer when pas_anonymes -> print_endline "! Dans quelle langue voulez-vous générer des mots ? -i <langage> !"
+    | Generer when pas_anonymes -> print_endline "! Dans quelle langue voulez-vous générer des mots ? -langage <langage> !"
     | Lister when pas_anonymes ->
       begin
 	faire_lister () ;
@@ -404,7 +350,7 @@ let main () =
       begin
 	faire_menage ((!fichier)::(!liste_anonymes)) ;
       end
-    | Menage -> print_endline "! Et si vous me disiez quels langages je dois supprimer ? !"
+    | Menage -> print_endline "! Et si vous me disiez quels langages je dois supprimer (via -langage <fichier> <fichier> <fichier> ? !"
     | _ -> 
       begin
 	print_endline "! Je ne sais pas quoi faire de ces arguments : " ;
